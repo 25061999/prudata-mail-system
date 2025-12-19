@@ -4,13 +4,14 @@ from email_generator import generate_email
 from email_sender import send_bulk_email
 from auth import authenticate
 import pandas as pd
+import logging
 import os
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = "prudata_secret"
+app.secret_key = os.environ.get("SECRET_KEY")
 
 
 # ---------------- LOGIN ----------------
@@ -46,7 +47,7 @@ def compose():
     emails = df.iloc[:, 0].dropna().tolist()
 
     body = generate_email(purpose, template)
-    print("EMAIL BODY GENERATED:\n", body)
+    app.logger.info(f"Email body generated for: {purpose}")
 
 
     return render_template(
@@ -68,11 +69,25 @@ def send():
     body = request.form["body"]
     emails = request.form.getlist("emails")
 
-    send_bulk_email(subject, body, emails)
-
-    return render_template("success.html", count=len(emails))
+    # ✅ FIXED: Now handles partial failures
+    success, message, failed_emails = send_bulk_email(subject, body, emails)
+    
+    if success:
+        return render_template("success.html", count=len(emails))
+    else:
+        # Show which emails failed
+        return f"""
+        <h2>Partial Success</h2>
+        <p>{message}</p>
+        <p>Failed emails ({len(failed_emails)}):</p>
+        <ul>
+            {"".join(f"<li>{email}: {error}</li>" for email, error in failed_emails)}
+        </ul>
+        <a href="/dashboard">Back to Dashboard</a>
+        """
 
 
 # ---------------- RUN APP ----------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
