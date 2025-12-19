@@ -1,8 +1,89 @@
-<div class="container">
-  <h2>PRUDATA Login</h2>
-  <form method="POST">
-    <input name="username" placeholder="Username" required><br><br>
-    <input type="password" name="password" placeholder="Password" required><br><br>
-    <button class="btn">Login</button>
-  </form>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prudata Mail | Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <!-- Left Panel -->
+        <div class="login-left">
+            <div class="brand-section">
+                <div class="logo-circle">
+                    <i class="fas fa-envelope-open-text"></i>
+                </div>
+                <h1>Prudata Mail</h1>
+                <p class="tagline">AI-Powered Professional Email Platform</p>
+            </div>
+            
+            <div class="features">
+                <div class="feature-item">
+                    <i class="fas fa-robot"></i>
+                    <span>AI Email Generation</span>
+                </div>
+                <div class="feature-item">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Bulk Email Campaigns</span>
+                </div>
+                <div class="feature-item">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Professional Templates</span>
+                </div>
+            </div>
+            
+            <div class="quote">
+                <i class="fas fa-quote-left"></i>
+                <p>Streamline your communication with intelligent email automation</p>
+            </div>
+        </div>
+        
+        <!-- Right Panel -->
+        <div class="login-right">
+            <div class="login-card">
+                <div class="login-header">
+                    <h2>Welcome Back</h2>
+                    <p>Sign in to your account</p>
+                </div>
+                
+                <form method="POST" class="login-form">
+                    <div class="form-group">
+                        <label for="username">
+                            <i class="fas fa-user"></i> Username
+                        </label>
+                        <input type="text" id="username" name="username" required 
+                               placeholder="Enter your username">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">
+                            <i class="fas fa-lock"></i> Password
+                        </label>
+                        <input type="password" id="password" name="password" required 
+                               placeholder="Enter your password">
+                    </div>
+                    
+                    <button type="submit" class="login-btn">
+                        <i class="fas fa-sign-in-alt"></i> Sign In
+                    </button>
+                    
+                    <div class="divider">
+                        <span>OR</span>
+                    </div>
+                    
+                    <div class="support-info">
+                        <p><i class="fas fa-info-circle"></i> Contact administrator for account access</p>
+                    </div>
+                </form>
+                
+                <div class="login-footer">
+                    <p>&copy; 2025 Prudata Mail System. All rights reserved.</p>
+                    <p class="version">v2.1.0</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
