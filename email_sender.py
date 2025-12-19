@@ -4,15 +4,16 @@ import os
 import time
 import logging
 from rate_limiter import allow_send
-from flask import current_app
 
 def send_bulk_email(subject, body, recipients):
     sent_count = 0
     failed_emails = []
     
     try:
-        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=30)
-        server.starttls()
+        # 🚨 FIX: Use SMTP_SSL with port 465 (works on Render)
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30)
+        # 🚨 REMOVE: server.starttls() - NOT needed for SSL
+        
         server.login(os.getenv("EMAIL"), os.getenv("EMAIL_PASSWORD"))
         
         for email in recipients:
