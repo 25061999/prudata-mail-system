@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PRUDATA Mail System</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 0;
+    }
+
+    .navbar {
+      background: #0b1c2d;
+      color: white;
+      padding: 18px 40px;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      background: white;
+      padding: 35px;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+
+    h2 {
+      margin-top: 0;
+      color: #0b1c2d;
+    }
+
+    label {
+      font-weight: 600;
+      margin-top: 20px;
+      display: block;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 12px;
+      margin-top: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 15px;
+    }
+
+    textarea {
+      resize: vertical;
+    }
+
+    .btn {
+      margin-top: 25px;
+      background: #0b1c2d;
+      color: white;
+      padding: 14px 22px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #12345a;
+    }
+
+    .footer {
+      text-align: center;
+      color: #777;
+      font-size: 13px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="navbar">
+  PRUDATA MAIL SYSTEM
+</div>
+
+<div class="container">
+  <h2>AI Bulk Email Composer</h2>
+  <p>Generate and send professional emails using AI with enterprise-grade safety.</p>
+
+  <form method="POST" enctype="multipart/form-data">
+    
+    <label>Email Subject</label>
+    <input type="text" name="subject" placeholder="Enter subject" required>
+
+    <label>Email Purpose</label>
+    <textarea name="purpose" rows="4" placeholder="Describe the purpose of this email" required></textarea>
+
+    <label>Email Tone</label>
+    <select name="template">
+      <option value="professional">Professional</option>
+      <option value="formal">Formal</option>
+      <option value="marketing">Marketing</option>
+    </select>
+
+    <label>Upload CSV (Email list)</label>
+    <input type="file" name="csv" accept=".csv" required>
+
+    <button class="btn" type="submit">Generate Email Preview</button>
+  </form>
+</div>
+
+<div class="footer">
+  © 2025 PRUDATA • Enterprise Communication Automation
+</div>
+
+</body>
+</html>

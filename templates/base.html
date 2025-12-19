@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PRUDATA MAIL SYSTEM</title>
+
+  <!-- IMPORTANT -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<header class="navbar">
+  <div class="navbar-content">
+    <img
+      src="{{ url_for('static', filename='images/prudata-logo.png') }}"
+      class="logo"
+      alt="PRUDATA Logo"
+    />
+    <span class="brand">PRUDATA MAIL SYSTEM</span>
+  </div>
+</header>
+
+<div class="page">
+  {% block content %}{% endblock %}
+</div>
+
+<footer>
+  © 2025 PRUDATA Tech Solutions • Enterprise Communication Automation
+</footer>
+
+</body>
+</html>

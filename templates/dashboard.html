@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h2>AI Bulk Email Composer</h2>
+  <p>Generate and send professional emails using AI with enterprise-grade safety.</p>
+
+  <form method="POST" action="/compose" enctype="multipart/form-data">
+
+    <label>Email Subject</label>
+    <input type="text" name="subject" placeholder="Enter subject" required>
+
+    <label>Email Purpose</label>
+    <textarea name="purpose" placeholder="Describe the purpose of this email" required></textarea>
+
+    <label>Email Tone</label>
+    <select name="template">
+      <option value="professional">Professional</option>
+      <option value="formal">Formal</option>
+      <option value="marketing">Marketing</option>
+    </select>
+
+    <label>Upload CSV (Email list)</label>
+    <input type="file" name="csv" accept=".csv" required>
+
+    <button type="submit">Generate Email Preview</button>
+
+  </form>
+</div>
+
+{% endblock %}
