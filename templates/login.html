@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prudata Mail | Login</title>
-    <link rel="stylesheet" href="style.css">
+     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="login-page">
@@ -14,7 +14,7 @@
             <div class="brand-section">
                 <!-- Logo replaced with your logo192.png -->
                 <div class="logo-rectangle">
-                   <img src="images/logo192.png" 
+                    <img src="{{ url_for('static', filename='images/logo192.png') }}" 
                          alt="Prudata Logo" 
                          class="prudata-logo">
                 </div>
