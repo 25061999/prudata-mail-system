@@ -106,7 +106,7 @@ def send_bulk_email(subject, body, recipients):
     Returns: (success_bool, message_str, failed_emails_list)
     """
     # ==================== GMAIL DAILY LIMIT ====================
-    MAX_EMAILS_PER_DAY = 80  # Stay well below Gmail's ~100/day limit for safety
+    MAX_EMAILS_PER_DAY = 20  # ⚠️ CRITICAL CHANGE: REDUCED FROM 80 TO 20
     
     # Validate inputs
     if not recipients:
@@ -186,7 +186,8 @@ def send_bulk_email(subject, body, recipients):
             # ✅ FIXED: Add reply-to header (improves deliverability)
             message.reply_to = from_email
             
-            # REMOVED: The problematic add_header() calls that were breaking your code
+            # ⚠️ CRITICAL: Remove all promotional language from email body
+            # The content itself must be non-promotional for better deliverability
             
             # Send the email
             response = sg_client.send(message)
