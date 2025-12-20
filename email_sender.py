@@ -171,8 +171,9 @@ def send_bulk_email(subject, body, recipients):
             wait_between_emails(3)
             
             # ✅ FIXED: Create the email message with FROM NAME included
+            # Use tuple format for name+email: (email, name)
             message = Mail(
-                from_email=(from_email, from_name),  # Tuple format for name+email
+                from_email=(from_email, from_name),  # This is the key fix
                 to_emails=to_email,
                 subject=subject,
                 html_content=html_body
@@ -185,13 +186,7 @@ def send_bulk_email(subject, body, recipients):
             # ✅ FIXED: Add reply-to header (improves deliverability)
             message.reply_to = from_email
             
-            # ✅ FIXED: MANDATORY Headers for Gmail/Yahoo 2024 requirements
-            # IMPORTANT: When you get a domain, change unsubscribe@example.com to unsubscribe@yourdomain.com
-            message.add_header("List-Unsubscribe", "<mailto:unsubscribe@example.com?subject=unsubscribe>")
-            message.add_header("List-Unsubscribe-Post", "List-Unsubscribe=One-Click")
-            
-            # Optional: Add a custom header for tracking
-            message.add_header("X-Priority", "3 (Normal)")
+            # REMOVED: The problematic add_header() calls that were breaking your code
             
             # Send the email
             response = sg_client.send(message)
