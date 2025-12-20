@@ -7,83 +7,56 @@ from rate_limiter import allow_send
 
 def format_email_body_to_html(plain_text_body):
     """
-    Converts plain text email body (from Groq AI) to clean HTML.
-    Handles paragraphs and bullet points (*).
+    Converts plain text to clean HTML without spam triggers
     """
-    # Clean up the text first
     plain_text_body = plain_text_body.strip()
-    
-    # Split text by lines
     lines = plain_text_body.split('\n')
     html_lines = []
     in_list = False
     
     for line in lines:
-        line = line.rstrip()  # Remove trailing whitespace
+        line = line.rstrip()
         
-        # Check if line starts with a bullet point
+        # Handle bullet points
         stripped_line = line.strip()
         if stripped_line.startswith('*'):
-            # Start unordered list if we're not already in one
             if not in_list:
-                html_lines.append('<ul>')
+                html_lines.append('<ul style="margin:10px 0;padding-left:20px;">')
                 in_list = True
-            
-            # Remove the '*' and any extra spaces, wrap in <li>
             list_item = stripped_line.lstrip('*').strip()
-            html_lines.append(f'<li>{list_item}</li>')
+            html_lines.append(f'<li style="margin-bottom:5px;">{list_item}</li>')
         else:
-            # If we were in a list and this line isn't a bullet, close the list
             if in_list:
                 html_lines.append('</ul>')
                 in_list = False
             
-            # Handle regular text (non-empty lines)
             if line:
-                html_lines.append(f'<p>{line}</p>')
+                # Remove spammy placeholders
+                line = line.replace('[Your Website URL]', 'our website')
+                line = line.replace('[Contact Information]', '')
+                html_lines.append(f'<p style="margin:8px 0;line-height:1.5;">{line}</p>')
     
-    # Close list if still open
     if in_list:
         html_lines.append('</ul>')
     
-    # Create final HTML structure
+    # Simple, clean HTML without spam triggers
     html_body = f"""<!DOCTYPE html>
 <html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-        ul {{ margin: 10px 0; padding-left: 20px; }}
-        li {{ margin-bottom: 5px; }}
-        p {{ margin: 10px 0; }}
-    </style>
-</head>
-<body>
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;color:#333;">
 {''.join(html_lines)}
-<hr>
-<p><small>Sent via Prudata Mail System</small></p>
+<p style="color:#666;font-size:12px;margin-top:20px;">
+To stop receiving these emails, please reply with "unsubscribe".
+</p>
 </body>
 </html>"""
     
     return html_body
 
-def validate_email_format(email):
-    """Basic email format validation"""
-    if not email or not isinstance(email, str):
-        return False
-    
-    email = email.strip().lower()
-    
-    # Simple but effective regex for email validation
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return bool(re.match(pattern, email))
-
 def send_bulk_email(subject, body, recipients):
     """
-    Sends bulk email using the SendGrid API.
-    Returns: (success_bool, message_str, failed_emails_list)
+    Spam-optimized email sending function
     """
-    # Validate inputs
     if not recipients:
         return False, "No recipients provided", []
     
@@ -93,95 +66,83 @@ def send_bulk_email(subject, body, recipients):
     sent_count = 0
     failed_emails = []
     
-    # 1. Get the API key from the environment
+    # 1. Get API key
     api_key = os.environ.get('SENDGRID_API_KEY')
     if not api_key:
-        error_msg = "SendGrid API key is not configured."
-        logging.error(f"❌ {error_msg}")
-        return False, error_msg, []
+        return False, "SendGrid API key is not configured.", []
     
-    # 2. Get sender email
+    # 2. Use a person's name in from_email, not just email
     from_email = os.environ.get("EMAIL", "prudata.tech@gmail.com")
-    if not validate_email_format(from_email):
-        return False, f"Invalid sender email format: {from_email}", []
+    from_name = "Prudata Team"  # Add sender name
     
-    # 3. Format the body to HTML and create plain text version
+    # 3. Optimize subject line (remove spam triggers)
+    subject = re.sub(r'\b(free|guarantee|click here|buy now|limited time)\b', '', subject, flags=re.IGNORECASE)
+    subject = subject.strip()
+    
+    # 4. Format content
     try:
         html_body = format_email_body_to_html(body)
-        # Create plain text version by removing HTML tags and extra spaces
         plain_body = re.sub(r'<[^>]+>', '', body)
+        plain_body = re.sub(r'\[.*?\]', '', plain_body)  # Remove placeholders
         plain_body = re.sub(r'\s+', ' ', plain_body).strip()
     except Exception as e:
-        logging.error(f"❌ Failed to format email body: {str(e)}")
-        # Fallback to simple formatting
+        logging.error(f"Formatting error: {str(e)}")
         html_body = f"<p>{body}</p>"
         plain_body = body
     
-    # 4. Create SendGrid client
+    # 5. Send emails with anti-spam configuration
     try:
         sg_client = SendGridAPIClient(api_key)
     except Exception as e:
-        error_msg = f"Failed to initialize SendGrid client: {str(e)}"
-        logging.error(f"❌ {error_msg}")
-        return False, error_msg, []
+        return False, f"SendGrid client error: {str(e)}", []
     
-    # 5. Loop through recipients and send
     for to_email in recipients:
-        # Validate email format
-        if not validate_email_format(to_email):
-            failed_emails.append((to_email, "Invalid email format"))
-            logging.warning(f"⚠️ Skipped invalid email: {to_email}")
+        # Basic email validation
+        if not re.match(r'^[^@]+@[^@]+\.[^@]+$', str(to_email)):
+            failed_emails.append((to_email, "Invalid format"))
             continue
         
-        to_email = to_email.strip().lower()
+        to_email = str(to_email).strip().lower()
         
         try:
-            allow_send(2)  # Respect rate limits (2 sec delay)
+            allow_send(3)  # Increase delay to 3 seconds
             
-            # ✅ SIMPLE, RELIABLE APPROACH: Create Mail object with basic parameters
+            # Create email with proper headers
             message = Mail(
-                from_email=from_email,
+                from_email=(from_email, from_name),  # Tuple adds sender name
                 to_emails=to_email,
                 subject=subject,
                 html_content=html_body
             )
             
-            # ✅ Add plain text content (important for deliverability)
-            plain_content = Content("text/plain", plain_body)
-            message.add_content(plain_content)
+            # Add plain text version
+            message.add_content(Content("text/plain", plain_body))
             
-            # ✅ REMOVED: All complex Personalization and custom_arg code
-            # ✅ REMOVED: Substitutions, custom headers, etc.
+            # ✅ CRITICAL: Add reply-to header (reduces spam score)
+            message.reply_to = from_email
             
-            # Send the email
+            # ✅ CRITICAL: Disable tracking for initial sends
+            message.tracking_settings = {
+                "click_tracking": {"enable": False},
+                "open_tracking": {"enable": False}
+            }
+            
+            # Send
             response = sg_client.send(message)
             
-            # Check for success (HTTP 202 Accepted)
             if response.status_code == 202:
                 sent_count += 1
-                logging.info(f"✅ Email sent to: {to_email}")
+                logging.info(f"✅ Sent to: {to_email}")
             else:
                 error_body = response.body.decode('utf-8') if response.body else "No details"
-                error_msg = f"SendGrid Error {response.status_code}: {error_body}"
-                failed_emails.append((to_email, error_msg))
-                logging.error(f"❌ Failed to send to {to_email}: {error_msg}")
+                failed_emails.append((to_email, f"Error {response.status_code}: {error_body}"))
                 
         except Exception as e:
-            error_msg = str(e)
-            failed_emails.append((to_email, error_msg))
-            logging.error(f"❌ Exception sending to {to_email}: {error_msg}")
+            failed_emails.append((to_email, str(e)))
             continue
     
-    # 6. Return results
-    total_attempted = len(recipients)
-    
-    if len(failed_emails) == 0 and sent_count == total_attempted:
-        success = True
-        message = f"✅ Successfully sent all {sent_count} emails!"
-    else:
-        success = False
-        failed_count = len(failed_emails)
-        invalid_count = len([e for e in recipients if not validate_email_format(e)])
-        message = f"📊 Sent {sent_count} of {total_attempted} emails. {failed_count} failed, {invalid_count} invalid."
+    # Return results
+    success = len(failed_emails) == 0 and sent_count == len(recipients)
+    message = f"Sent {sent_count}/{len(recipients)}. {len(failed_emails)} failed."
     
     return success, message, failed_emails
