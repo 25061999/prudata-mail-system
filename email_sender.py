@@ -2,7 +2,7 @@ import os
 import re
 import logging
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Content
+from sendgrid.helpers.mail import Mail, Content, Personalization
 from rate_limiter import allow_send
 
 def format_email_body_to_html(plain_text_body):
@@ -150,24 +150,29 @@ def send_bulk_email(subject, body, recipients):
         try:
             allow_send(2)  # Respect rate limits (2 sec delay)
             
-            # Create the email message with both HTML and plain text
+            # Create the email message
             message = Mail(
                 from_email=from_email,
                 to_emails=to_email,
                 subject=subject
             )
             
-            # Add both HTML and plain text content
-            message.content = [
-                Content("text/html", html_body),
-                Content("text/plain", plain_body)
-            ]
+            # Add both HTML and plain text content (FIXED: Use proper assignment)
+            message.content = Content("text/html", html_body)
             
-            # Optional: Add custom headers for tracking
-            message.custom_arg = {
+            # Create plain text alternative
+            plain_content = Content("text/plain", plain_body)
+            message.add_content(plain_content)
+            
+            # ✅ FIXED: Add custom args correctly using Personalization
+            personalization = Personalization()
+            personalization.add_to(to_email)
+            personalization.custom_arg = {
                 "campaign": "prudata_mail",
-                "sent_via": "flask_app"
+                "sent_via": "flask_app",
+                "recipient_id": to_email  # Optional: track recipient
             }
+            message.add_personalization(personalization)
             
             # Send the email
             response = sg_client.send(message)
