@@ -44,26 +44,17 @@ def compose():
 
     file = request.files["csv"]
     df = pd.read_csv(file)
-    
-    # Get emails and names if available
-    emails = df['email'].dropna().tolist()
-    
-    # Handle names column (use empty string if not present)
-    names = []
-    if 'name' in df.columns:
-        names = df['name'].fillna('').tolist()
-    else:
-        names = [''] * len(emails)
+    emails = df.iloc[:, 0].dropna().tolist()
 
     body = generate_email(purpose, template)
     app.logger.info(f"Email body generated for: {purpose}")
+
 
     return render_template(
         "preview.html",
         subject=subject,
         body=body,
         emails=emails,
-        names=names,  # Pass names to template
         count=len(emails)
     )
 
@@ -77,10 +68,9 @@ def send():
     subject = request.form["subject"]
     body = request.form["body"]
     emails = request.form.getlist("emails")
-    names = request.form.getlist("names")
 
-    # ✅ Now sends with names for personalization
-    success, message, failed_emails = send_bulk_email(subject, body, emails, names)
+    # ✅ FIXED: Now handles partial failures
+    success, message, failed_emails = send_bulk_email(subject, body, emails)
     
     if success:
         return render_template("success.html", count=len(emails))
