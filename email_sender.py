@@ -2,13 +2,13 @@ import os
 import re
 import logging
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Content, Personalization
+from sendgrid.helpers.mail import Mail, Content
 from rate_limiter import allow_send
 
 def format_email_body_to_html(plain_text_body):
     """
-    Converts plain text email body (from Groq AI) to professional HTML.
-    Handles paragraphs, bullet points (*), and preserves important formatting.
+    Converts plain text email body (from Groq AI) to clean HTML.
+    Handles paragraphs and bullet points (*).
     """
     # Clean up the text first
     plain_text_body = plain_text_body.strip()
@@ -17,43 +17,30 @@ def format_email_body_to_html(plain_text_body):
     lines = plain_text_body.split('\n')
     html_lines = []
     in_list = False
-    in_paragraph = False
     
     for line in lines:
         line = line.rstrip()  # Remove trailing whitespace
         
-        # Skip completely empty lines between paragraphs
-        if not line and not in_paragraph:
-            continue
-            
         # Check if line starts with a bullet point
-        if line.strip().startswith('*'):
+        stripped_line = line.strip()
+        if stripped_line.startswith('*'):
             # Start unordered list if we're not already in one
             if not in_list:
-                html_lines.append('<ul style="margin: 15px 0; padding-left: 25px;">')
+                html_lines.append('<ul>')
                 in_list = True
             
             # Remove the '*' and any extra spaces, wrap in <li>
-            list_item = line.strip().lstrip('*').strip()
-            html_lines.append(f'  <li style="margin-bottom: 8px;">{list_item}</li>')
-            in_paragraph = True
+            list_item = stripped_line.lstrip('*').strip()
+            html_lines.append(f'<li>{list_item}</li>')
         else:
             # If we were in a list and this line isn't a bullet, close the list
             if in_list:
                 html_lines.append('</ul>')
                 in_list = False
             
-            # Handle regular text
+            # Handle regular text (non-empty lines)
             if line:
-                # Convert [Placeholders] to highlighted text
-                line = re.sub(r'\[(.*?)\]', r'<strong style="color: #2c5282;">[\1]</strong>', line)
-                
-                # Add paragraph tags for non-empty lines
-                html_lines.append(f'<p style="margin: 12px 0; line-height: 1.6;">{line}</p>')
-                in_paragraph = True
-            elif in_paragraph:
-                # Empty line after content = paragraph break
-                html_lines.append('</p><p style="margin: 12px 0;">')
+                html_lines.append(f'<p>{line}</p>')
     
     # Close list if still open
     if in_list:
@@ -64,21 +51,21 @@ def format_email_body_to_html(plain_text_body):
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Email</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        ul {{ margin: 10px 0; padding-left: 20px; }}
+        li {{ margin-bottom: 5px; }}
+        p {{ margin: 10px 0; }}
+    </style>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #2d3748; background-color: #f7fafc; margin: 0; padding: 20px;">
-    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-        {"".join(html_lines)}
-        <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 14px; color: #718096;">
-            <p>This email was sent by Prudata Mail System.</p>
-        </div>
-    </div>
+<body>
+{''.join(html_lines)}
+<hr>
+<p><small>Sent via Prudata Mail System</small></p>
 </body>
 </html>"""
     
     return html_body
-
 
 def validate_email_format(email):
     """Basic email format validation"""
@@ -90,7 +77,6 @@ def validate_email_format(email):
     # Simple but effective regex for email validation
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))
-
 
 def send_bulk_email(subject, body, recipients):
     """
@@ -119,13 +105,15 @@ def send_bulk_email(subject, body, recipients):
     if not validate_email_format(from_email):
         return False, f"Invalid sender email format: {from_email}", []
     
-    # 3. Format the body to HTML
+    # 3. Format the body to HTML and create plain text version
     try:
         html_body = format_email_body_to_html(body)
-        plain_body = re.sub(r'<[^>]+>', '', body)  # Create plain text version
+        # Create plain text version by removing HTML tags and extra spaces
+        plain_body = re.sub(r'<[^>]+>', '', body)
         plain_body = re.sub(r'\s+', ' ', plain_body).strip()
     except Exception as e:
         logging.error(f"❌ Failed to format email body: {str(e)}")
+        # Fallback to simple formatting
         html_body = f"<p>{body}</p>"
         plain_body = body
     
@@ -150,29 +138,20 @@ def send_bulk_email(subject, body, recipients):
         try:
             allow_send(2)  # Respect rate limits (2 sec delay)
             
-            # Create the email message
+            # ✅ SIMPLE, RELIABLE APPROACH: Create Mail object with basic parameters
             message = Mail(
                 from_email=from_email,
                 to_emails=to_email,
-                subject=subject
+                subject=subject,
+                html_content=html_body
             )
             
-            # Add both HTML and plain text content (FIXED: Use proper assignment)
-            message.content = Content("text/html", html_body)
-            
-            # Create plain text alternative
+            # ✅ Add plain text content (important for deliverability)
             plain_content = Content("text/plain", plain_body)
             message.add_content(plain_content)
             
-            # ✅ FIXED: Add custom args correctly using Personalization
-            personalization = Personalization()
-            personalization.add_to(to_email)
-            personalization.custom_arg = {
-                "campaign": "prudata_mail",
-                "sent_via": "flask_app",
-                "recipient_id": to_email  # Optional: track recipient
-            }
-            message.add_personalization(personalization)
+            # ✅ REMOVED: All complex Personalization and custom_arg code
+            # ✅ REMOVED: Substitutions, custom headers, etc.
             
             # Send the email
             response = sg_client.send(message)
@@ -193,28 +172,16 @@ def send_bulk_email(subject, body, recipients):
             logging.error(f"❌ Exception sending to {to_email}: {error_msg}")
             continue
     
-    # 6. Return results with detailed statistics
+    # 6. Return results
     total_attempted = len(recipients)
-    invalid_emails = len([e for e in recipients if not validate_email_format(e)])
     
     if len(failed_emails) == 0 and sent_count == total_attempted:
         success = True
-        if invalid_emails > 0:
-            message = f"✅ Sent {sent_count} emails. Skipped {invalid_emails} invalid addresses."
-        else:
-            message = f"✅ Successfully sent all {sent_count} emails!"
+        message = f"✅ Successfully sent all {sent_count} emails!"
     else:
         success = False
         failed_count = len(failed_emails)
-        message = f"📊 Sent {sent_count} of {total_attempted} emails. {failed_count} failed, {invalid_emails} invalid."
+        invalid_count = len([e for e in recipients if not validate_email_format(e)])
+        message = f"📊 Sent {sent_count} of {total_attempted} emails. {failed_count} failed, {invalid_count} invalid."
     
-    # Add more details to the return message
-    details = {
-        "sent": sent_count,
-        "failed": len(failed_emails),
-        "invalid": invalid_emails,
-        "total": total_attempted
-    }
-    
-    logging.info(f"📧 Email batch completed: {message}")
-    return success, f"{message} | Details: {details}", failed_emails
+    return success, message, failed_emails
