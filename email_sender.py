@@ -3,12 +3,10 @@ import re
 import logging
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Content
-from rate_limiter import allow_send
+from rate_limiter import allow_send  # ✅ Import your rate limiter
 
 def format_email_body_to_html(plain_text_body):
-    """
-    Converts plain text to clean HTML without spam triggers
-    """
+    """Converts plain text to clean HTML."""
     plain_text_body = plain_text_body.strip()
     lines = plain_text_body.split('\n')
     html_lines = []
@@ -17,7 +15,6 @@ def format_email_body_to_html(plain_text_body):
     for line in lines:
         line = line.rstrip()
         
-        # Handle bullet points
         stripped_line = line.strip()
         if stripped_line.startswith('*'):
             if not in_list:
@@ -31,7 +28,7 @@ def format_email_body_to_html(plain_text_body):
                 in_list = False
             
             if line:
-                # Remove spammy placeholders
+                # Clean spammy placeholders
                 line = line.replace('[Your Website URL]', 'our website')
                 line = line.replace('[Contact Information]', '')
                 html_lines.append(f'<p style="margin:8px 0;line-height:1.5;">{line}</p>')
@@ -39,14 +36,13 @@ def format_email_body_to_html(plain_text_body):
     if in_list:
         html_lines.append('</ul>')
     
-    # Simple, clean HTML without spam triggers
     html_body = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"></head>
 <body style="font-family:Arial,sans-serif;color:#333;">
 {''.join(html_lines)}
 <p style="color:#666;font-size:12px;margin-top:20px;">
-To stop receiving these emails, please reply with "unsubscribe".
+To stop receiving emails, please reply with "unsubscribe".
 </p>
 </body>
 </html>"""
@@ -54,9 +50,7 @@ To stop receiving these emails, please reply with "unsubscribe".
     return html_body
 
 def send_bulk_email(subject, body, recipients):
-    """
-    Spam-optimized email sending function
-    """
+    """Sends bulk email using SendGrid API."""
     if not recipients:
         return False, "No recipients provided", []
     
@@ -71,11 +65,11 @@ def send_bulk_email(subject, body, recipients):
     if not api_key:
         return False, "SendGrid API key is not configured.", []
     
-    # 2. Use a person's name in from_email, not just email
+    # 2. Get sender info
     from_email = os.environ.get("EMAIL", "prudata.tech@gmail.com")
-    from_name = "Prudata Team"  # Add sender name
+    from_name = "Prudata Team"
     
-    # 3. Optimize subject line (remove spam triggers)
+    # 3. Clean subject line
     subject = re.sub(r'\b(free|guarantee|click here|buy now|limited time)\b', '', subject, flags=re.IGNORECASE)
     subject = subject.strip()
     
@@ -90,12 +84,13 @@ def send_bulk_email(subject, body, recipients):
         html_body = f"<p>{body}</p>"
         plain_body = body
     
-    # 5. Send emails with anti-spam configuration
+    # 5. Create SendGrid client
     try:
         sg_client = SendGridAPIClient(api_key)
     except Exception as e:
         return False, f"SendGrid client error: {str(e)}", []
     
+    # 6. Send emails
     for to_email in recipients:
         # Basic email validation
         if not re.match(r'^[^@]+@[^@]+\.[^@]+$', str(to_email)):
@@ -105,11 +100,12 @@ def send_bulk_email(subject, body, recipients):
         to_email = str(to_email).strip().lower()
         
         try:
-            allow_send(3)  # Increase delay to 3 seconds
+            # ✅ CRITICAL FIX: Pass the delay parameter (3 seconds)
+            allow_send(3)  # This matches your rate_limiter.py function signature
             
-            # Create email with proper headers
+            # Create email
             message = Mail(
-                from_email=(from_email, from_name),  # Tuple adds sender name
+                from_email=(from_email, from_name),
                 to_emails=to_email,
                 subject=subject,
                 html_content=html_body
@@ -118,16 +114,16 @@ def send_bulk_email(subject, body, recipients):
             # Add plain text version
             message.add_content(Content("text/plain", plain_body))
             
-            # ✅ CRITICAL: Add reply-to header (reduces spam score)
+            # Add reply-to header (reduces spam)
             message.reply_to = from_email
             
-            # ✅ CRITICAL: Disable tracking for initial sends
+            # Disable tracking initially
             message.tracking_settings = {
                 "click_tracking": {"enable": False},
                 "open_tracking": {"enable": False}
             }
             
-            # Send
+            # Send email
             response = sg_client.send(message)
             
             if response.status_code == 202:
@@ -139,9 +135,10 @@ def send_bulk_email(subject, body, recipients):
                 
         except Exception as e:
             failed_emails.append((to_email, str(e)))
+            logging.error(f"Failed to send to {to_email}: {str(e)}")
             continue
     
-    # Return results
+    # 7. Return results
     success = len(failed_emails) == 0 and sent_count == len(recipients)
     message = f"Sent {sent_count}/{len(recipients)}. {len(failed_emails)} failed."
     
