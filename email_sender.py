@@ -105,12 +105,19 @@ def send_bulk_email(subject, body, recipients):
     Sends bulk email using the SendGrid API.
     Returns: (success_bool, message_str, failed_emails_list)
     """
+    # ==================== GMAIL DAILY LIMIT ====================
+    MAX_EMAILS_PER_DAY = 80  # Stay well below Gmail's ~100/day limit for safety
+    
     # Validate inputs
     if not recipients:
         return False, "No recipients provided", []
     
     if not isinstance(recipients, list):
         recipients = [recipients] if recipients else []
+    
+    # Check daily sending limit
+    if len(recipients) > MAX_EMAILS_PER_DAY:
+        return False, f"Cannot send more than {MAX_EMAILS_PER_DAY} emails per day from a Gmail address.", []
     
     sent_count = 0
     failed_emails = []
@@ -122,8 +129,10 @@ def send_bulk_email(subject, body, recipients):
         logging.error(f"❌ {error_msg}")
         return False, error_msg, []
     
-    # 2. Get sender email
+    # 2. Get sender email and name
     from_email = os.environ.get("EMAIL", "prudata.tech@gmail.com")
+    from_name = os.environ.get("FROM_NAME", "Prudata Team")
+    
     if not validate_email_format(from_email):
         return False, f"Invalid sender email format: {from_email}", []
     
@@ -161,9 +170,9 @@ def send_bulk_email(subject, body, recipients):
             # ✅ FIXED: Use built-in rate limiter (3-second delay between emails)
             wait_between_emails(3)
             
-            # Create the email message
+            # ✅ FIXED: Create the email message with FROM NAME included
             message = Mail(
-                from_email=from_email,
+                from_email=(from_email, from_name),  # Tuple format for name+email
                 to_emails=to_email,
                 subject=subject,
                 html_content=html_body
@@ -173,8 +182,16 @@ def send_bulk_email(subject, body, recipients):
             plain_content = Content("text/plain", plain_body)
             message.add_content(plain_content)
             
-            # Optional: Add reply-to header (improves deliverability)
+            # ✅ FIXED: Add reply-to header (improves deliverability)
             message.reply_to = from_email
+            
+            # ✅ FIXED: MANDATORY Headers for Gmail/Yahoo 2024 requirements
+            # IMPORTANT: When you get a domain, change unsubscribe@example.com to unsubscribe@yourdomain.com
+            message.add_header("List-Unsubscribe", "<mailto:unsubscribe@example.com?subject=unsubscribe>")
+            message.add_header("List-Unsubscribe-Post", "List-Unsubscribe=One-Click")
+            
+            # Optional: Add a custom header for tracking
+            message.add_header("X-Priority", "3 (Normal)")
             
             # Send the email
             response = sg_client.send(message)
